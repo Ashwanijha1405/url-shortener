@@ -19,6 +19,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", handler.Health)
+	mux.HandleFunc("/api/v1/urls", handler.CreateURL)
+	mux.HandleFunc("/{shortCode}", handler.RedirectURL)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
