@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Ashwanijha1405/url-shortener/internal/generator"
 	"github.com/Ashwanijha1405/url-shortener/internal/validator"
 )
 
@@ -23,17 +24,32 @@ func CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.URL == "" {
+		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+
 	if err := validator.ValidateURL(req.URL); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	shortCode, err := generator.Generate(generator.DefaultLength)
+	if err != nil {
+		http.Error(w, "failed to generate short code", http.StatusInternalServerError)
+		return
+	}
+
 	response := CreateURLResponse{
-		ShortCode: "abc123",
+		ShortCode: shortCode,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		return
+    }
 
 	json.NewEncoder(w).Encode(response)
 }
