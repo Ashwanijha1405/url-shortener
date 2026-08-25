@@ -58,19 +58,19 @@ func TestGenerateCharacters(t *testing.T) {
 }
 
 func TestGenerateUniqueness(t *testing.T) {
-    generated := make(map[string]bool)
+	generated := make(map[string]bool)
 
-    for i := 0; i < 1000; i++ {
-        code, err := Generate(DefaultLength)
+	for i := 0; i < 1000; i++ {
+		code, err := Generate(DefaultLength)
 
-        if err != nil {
-            t.Fatalf("Generate() returned error: %v", err)
-        }
+		if err != nil {
+			t.Fatalf("Generate() returned error: %v", err)
+		}
 
-        if generated[code] {
-            t.Fatalf("duplicate short code generated: %s", code)
-        }
+		if generated[code] {
+			t.Fatalf("duplicate short code generated: %s", code)
+		}
 
-        generated[code] = true
-    }
+		generated[code] = true
+	}
 }
