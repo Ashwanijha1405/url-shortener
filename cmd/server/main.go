@@ -10,17 +10,36 @@ import (
 	"time"
 
 	"github.com/Ashwanijha1405/url-shortener/internal/config"
+	"github.com/Ashwanijha1405/url-shortener/internal/database"
 	"github.com/Ashwanijha1405/url-shortener/internal/handler"
+	"github.com/Ashwanijha1405/url-shortener/internal/repository/postgres"
 )
 
 func main() {
+	ctx := context.Background()
+
+	// Connect to PostgreSQL
+	db, err := database.Connect(ctx)
+	if err != nil {
+		log.Fatalf("database connection failed: %v", err)
+	}
+	defer db.Pool.Close()
+
+	log.Println("connected to PostgreSQL")
+
+	// Create repository
+	repo := postgres.NewRepository(db)
+
+	// Inject repository into handler
+	h := handler.NewHandler(repo)
+
 	cfg := config.Load()
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", handler.Health)
-	mux.HandleFunc("/api/v1/urls", handler.CreateURL)
-	mux.HandleFunc("/{shortCode}", handler.RedirectURL)
+	mux.HandleFunc("/api/v1/urls", h.CreateURL)
+	mux.HandleFunc("/{shortCode}", h.RedirectURL)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -46,13 +65,13 @@ func main() {
 	log.Println("shutdown signal received")
 
 	// Give active requests some time to finish.
-	ctx, cancel := context.WithTimeout(
+	shutdownCtx, cancel := context.WithTimeout(
 		context.Background(),
 		5*time.Second,
 	)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
 		return
 	}

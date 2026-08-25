@@ -5,8 +5,13 @@ import (
 	"net/http"
 
 	"github.com/Ashwanijha1405/url-shortener/internal/generator"
+	"github.com/Ashwanijha1405/url-shortener/internal/repository"
 	"github.com/Ashwanijha1405/url-shortener/internal/validator"
 )
+
+type Handler struct {
+	repo repository.URLRepository
+}
 
 type CreateURLRequest struct {
 	URL string `json:"url"`
@@ -16,7 +21,13 @@ type CreateURLResponse struct {
 	ShortCode string `json:"short_code"`
 }
 
-func CreateURL(w http.ResponseWriter, r *http.Request) {
+func NewHandler(repo repository.URLRepository) *Handler {
+	return &Handler{
+		repo: repo,
+	}
+}
+
+func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	var req CreateURLRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -40,6 +51,11 @@ func CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.repo.Create(r.Context(), shortCode, req.URL); err != nil {
+		http.Error(w, "failed to create short URL", http.StatusInternalServerError)
+		return
+	}
+
 	response := CreateURLResponse{
 		ShortCode: shortCode,
 	}
@@ -49,12 +65,10 @@ func CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		return
-    }
-
-	json.NewEncoder(w).Encode(response)
+	}
 }
 
-func RedirectURL(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	shortCode := r.PathValue("shortCode")
 
 	if shortCode == "" {
@@ -62,9 +76,11 @@ func RedirectURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Temporary mapping.
-	// This will eventually come from the database.
-	url := "https://google.com"
+	originalURL, err := h.repo.GetByShortCode(r.Context(), shortCode)
+	if err != nil {
+		http.Error(w, "short URL not found", http.StatusNotFound)
+		return
+	}
 
-	http.Redirect(w, r, url, http.StatusFound)
+	http.Redirect(w, r, originalURL, http.StatusFound)
 }
