@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,9 +14,13 @@ type DB struct {
 }
 
 func Connect(ctx context.Context) (*DB, error) {
-	config, err := pgxpool.ParseConfig(
-		"postgres://postgres:postgres@localhost:5432/url_shortener",
-	)
+	databaseURL := os.Getenv("DATABASE_URL")
+
+	if databaseURL == "" {
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
+	}
+
+	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database config: %w", err)
 	}
@@ -34,5 +39,7 @@ func Connect(ctx context.Context) (*DB, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	return &DB{Pool: pool}, nil
+	return &DB{
+		Pool: pool,
+	}, nil
 }
