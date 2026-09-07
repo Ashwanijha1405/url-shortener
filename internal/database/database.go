@@ -3,9 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
-	"time"
 
+	"github.com/Ashwanijha1405/url-shortener/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -13,23 +12,21 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-func Connect(ctx context.Context) (*DB, error) {
-	databaseURL := os.Getenv("DATABASE_URL")
-
-	if databaseURL == "" {
+func Connect(ctx context.Context, cfg config.DBConfig) (*DB, error) {
+	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 
-	config, err := pgxpool.ParseConfig(databaseURL)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database config: %w", err)
 	}
 
-	config.MaxConns = 10
-	config.MinConns = 2
-	config.MaxConnLifetime = time.Hour
+	poolConfig.MaxConns = cfg.MaxConns
+	poolConfig.MinConns = cfg.MinConns
+	poolConfig.MaxConnLifetime = cfg.MaxConnLifetime
 
-	pool, err := pgxpool.NewWithConfig(ctx, config)
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
 	}
@@ -42,4 +39,11 @@ func Connect(ctx context.Context) (*DB, error) {
 	return &DB{
 		Pool: pool,
 	}, nil
+}
+
+func (db *DB) Ping(ctx context.Context) error {
+	if db == nil || db.Pool == nil {
+		return fmt.Errorf("database pool is not initialized")
+	}
+	return db.Pool.Ping(ctx)
 }

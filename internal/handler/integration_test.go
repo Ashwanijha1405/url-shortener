@@ -5,27 +5,39 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/Ashwanijha1405/url-shortener/internal/config"
 	"github.com/Ashwanijha1405/url-shortener/internal/database"
 	"github.com/Ashwanijha1405/url-shortener/internal/repository/postgres"
+	"github.com/Ashwanijha1405/url-shortener/internal/service"
 )
 
 func TestURLShortenerIntegration(t *testing.T) {
-	ctx := context.Background()
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("skipping integration test: DATABASE_URL is not set")
+	}
+
+	cfg := config.Load()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	// Connect to the real PostgreSQL database.
-	db, err := database.Connect(ctx)
+	db, err := database.Connect(ctx, cfg.DB)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
 
-	// Use the real PostgreSQL repository.
+	// Use the real PostgreSQL repository and Service.
 	repo := postgres.NewRepository(db)
+	svc := service.New(repo)
 
 	// Use the real HTTP handler.
-	h := NewHandler(repo)
+	h := NewHandler(svc, WithMaxBodyBytes(cfg.Server.MaxBodyBytes))
 
 	// ------------------------------------------------
 	// Step 1: Create a short URL

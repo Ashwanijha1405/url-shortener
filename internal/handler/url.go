@@ -2,15 +2,38 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
-	"github.com/Ashwanijha1405/url-shortener/internal/generator"
-	"github.com/Ashwanijha1405/url-shortener/internal/repository"
-	"github.com/Ashwanijha1405/url-shortener/internal/validator"
+	"github.com/Ashwanijha1405/url-shortener/internal/service"
 )
 
+const defaultMaxBodyBytes = 10240 // 10KB
+
 type Handler struct {
-	repo repository.URLRepository
+	svc          service.URLService
+	maxBodyBytes int64
+}
+
+type HandlerOption func(*Handler)
+
+func WithMaxBodyBytes(n int64) HandlerOption {
+	return func(h *Handler) {
+		if n > 0 {
+			h.maxBodyBytes = n
+		}
+	}
+}
+
+func NewHandler(svc service.URLService, opts ...HandlerOption) *Handler {
+	h := &Handler{
+		svc:          svc,
+		maxBodyBytes: defaultMaxBodyBytes,
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 type CreateURLRequest struct {
@@ -21,38 +44,26 @@ type CreateURLResponse struct {
 	ShortCode string `json:"short_code"`
 }
 
-func NewHandler(repo repository.URLRepository) *Handler {
-	return &Handler{
-		repo: repo,
-	}
-}
-
 func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
-	var req CreateURLRequest
+	r.Body = http.MaxBytesReader(w, r.Body, h.maxBodyBytes)
 
+	var req CreateURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if req.URL == "" {
-		http.Error(w, "url is required", http.StatusBadRequest)
-		return
-	}
-
-	if err := validator.ValidateURL(req.URL); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	shortCode, err := generator.Generate(generator.DefaultLength)
+	shortCode, err := h.svc.CreateShortURL(r.Context(), req.URL)
 	if err != nil {
-		http.Error(w, "failed to generate short code", http.StatusInternalServerError)
-		return
-	}
-
-	if err := h.repo.Create(r.Context(), shortCode, req.URL); err != nil {
-		http.Error(w, "failed to create short URL", http.StatusInternalServerError)
+		if errors.Is(err, service.ErrInvalidInput) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrConflict) {
+			http.Error(w, "unable to generate unique short code, please try again", http.StatusConflict)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -62,23 +73,27 @@ func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		return
-	}
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	shortCode := r.PathValue("shortCode")
-
 	if shortCode == "" {
 		http.Error(w, "short code is required", http.StatusBadRequest)
 		return
 	}
 
-	originalURL, err := h.repo.GetByShortCode(r.Context(), shortCode)
+	originalURL, err := h.svc.ResolveURL(r.Context(), shortCode)
 	if err != nil {
-		http.Error(w, "short URL not found", http.StatusNotFound)
+		if errors.Is(err, service.ErrNotFound) {
+			http.Error(w, "short URL not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, service.ErrInvalidInput) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

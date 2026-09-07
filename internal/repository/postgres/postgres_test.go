@@ -2,19 +2,29 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/Ashwanijha1405/url-shortener/internal/config"
 	"github.com/Ashwanijha1405/url-shortener/internal/database"
+	"github.com/Ashwanijha1405/url-shortener/internal/repository"
 )
 
 func setupTestRepository(t *testing.T) *Repository {
 	t.Helper()
 
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("skipping postgres integration test: DATABASE_URL not set")
+	}
+
+	cfg := config.Load()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	db, err := database.Connect(ctx)
+	db, err := database.Connect(ctx, cfg.DB)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
@@ -117,6 +127,10 @@ func TestGetByShortCodeNotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for nonexistent short code")
 	}
+
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got: %v", err)
+	}
 }
 
 func TestCreateDuplicateShortCode(t *testing.T) {
@@ -144,5 +158,9 @@ func TestCreateDuplicateShortCode(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error when creating duplicate short code")
+	}
+
+	if !errors.Is(err, repository.ErrConflict) {
+		t.Fatalf("expected ErrConflict, got: %v", err)
 	}
 }

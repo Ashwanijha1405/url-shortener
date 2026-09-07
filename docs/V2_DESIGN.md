@@ -554,35 +554,35 @@ CREATE TABLE IF NOT EXISTS urls (
 The V2 evolution is broken down into structured, incremental milestones:
 
 ### Phase 1: Architectural Hardening & Service Layer
-- [ ] Centralize configuration in `internal/config` (unify `DATABASE_URL`, `PORT`, pool limits, timeouts).
-- [ ] Implement domain sentinel errors (`ErrNotFound`, `ErrConflict`, `ErrInvalidInput`).
-- [ ] Introduce clean Service layer (`internal/service`) separating HTTP transport from business logic.
-- [ ] Implement short-code collision detection and automatic retry loop (up to 3 attempts).
-- [ ] Enforce bounded request body size (`http.MaxBytesReader`) and strict HTTP method routing in `net/http`.
-- [ ] Fix redirect error masking bug (distinguish `ErrNotFound` [404] from database/internal errors [500]).
+- [x] Centralize configuration in `internal/config` (unify `DATABASE_URL`, `PORT`, pool limits, timeouts).
+- [x] Implement domain sentinel errors (`ErrNotFound`, `ErrConflict`, `ErrInvalidInput`).
+- [x] Introduce clean Service layer (`internal/service`) separating HTTP transport from business logic.
+- [x] Implement short-code collision detection and automatic retry loop (up to 3 attempts).
+- [x] Enforce bounded request body size (`http.MaxBytesReader`) and strict HTTP method routing in `net/http`.
+- [x] Fix redirect error masking bug (distinguish `ErrNotFound` [404] from database/internal errors [500]).
 
 ### Phase 2: Observability & Middleware
-- [ ] Implement structured logging using `log/slog`.
-- [ ] Add Request ID middleware generating/propagating `X-Request-ID`.
-- [ ] Add Panic Recovery middleware.
-- [ ] Expand health checks into liveness (`/health/live`) and readiness (`/health/ready` checking PostgreSQL).
+- [x] Implement structured logging using `log/slog`.
+- [x] Add Request ID middleware generating/propagating `X-Request-ID`.
+- [x] Add Panic Recovery middleware.
+- [x] Expand health checks into liveness (`/health/live`) and readiness (`/health/ready` checking PostgreSQL).
 
 ### Phase 3: High-Performance Caching Layer (Redis)
-- [ ] Define cache abstraction interface (`internal/cache`).
-- [ ] Implement Redis cache client using `github.com/redis/go-redis/v9`.
-- [ ] Implement Cache-Aside on redirect lookups (`GET /{shortCode}`).
-- [ ] Implement cache pre-warming on URL creation (`POST /api/v1/urls`).
-- [ ] Implement fail-open resilience (PostgreSQL fallback when Redis is unreachable).
-- [ ] Update readiness check to include Redis ping.
+- [x] Define cache abstraction interface (`internal/cache`).
+- [x] Implement Redis cache client using `github.com/redis/go-redis/v9`.
+- [x] Implement Cache-Aside on redirect lookups (`GET /{shortCode}`).
+- [x] Implement cache pre-warming on URL creation (`POST /api/v1/urls`).
+- [x] Implement fail-open resilience (PostgreSQL fallback when Redis is unreachable).
+- [x] Update readiness check to include Redis ping.
 
 ### Phase 4: Rate Limiting & Protection
-- [ ] Implement client IP rate limiting middleware (token bucket / sliding window in Redis or memory) on `POST /api/v1/urls`.
-- [ ] Add SSRF checks (block loopback, RFC1918 private IPs, AWS metadata endpoints `169.254.169.254`).
+- [x] Implement client IP rate limiting middleware (token bucket / sliding window in Redis or memory) on `POST /api/v1/urls`.
+- [x] Add SSRF checks (block loopback, RFC1918 private IPs, AWS metadata endpoints `169.254.169.254`).
 
 ### Phase 5: Verification, Benchmarking & Load Testing
-- [ ] Comprehensive unit, repository, and cache integration test suite.
-- [ ] Chaos/failure-path integration tests verifying Redis outage fallback.
-- [ ] Benchmarks comparing cached vs uncached redirect latency.
+- [x] Comprehensive unit, repository, and cache integration test suite.
+- [x] Chaos/failure-path integration tests verifying Redis outage fallback.
+- [x] Benchmarks comparing cached vs uncached redirect latency.
 
 ---
 
@@ -590,6 +590,11 @@ The V2 evolution is broken down into structured, incremental milestones:
 - [x] Initial repository archaeology and architecture audit.
 - [x] Identification of V1 technical debt and edge-case behaviors.
 - [x] Creation of V2 Design Specification and Engineering Journal (`docs/V2_DESIGN.md`).
+- [x] **Phase 1 Complete**: Centralized config, domain sentinel errors, dedicated service layer with collision retry loop, bounded request bodies, method routing, and redirect error-masking fix.
+- [x] **Phase 2 Complete**: Structured JSON/Text logging with `log/slog`, request ID generation and propagation middleware (`X-Request-ID`), panic recovery middleware with stack traces, and decoupled liveness (`/health/live`) & readiness (`/health/ready`) health checks.
+- [x] **Phase 3 Complete**: High-performance Cache-Aside Redis layer with `go-redis/v9`, opportunistic pre-warming on creation, fail-open database fallback on cache degradation, and multi-dependency readiness health probing.
+- [x] **Phase 4 Complete**: Per-client IP token-bucket rate limiting middleware with automatic token replenishment and idle bucket cleanup on `POST /api/v1/urls`, along with SSRF validation blocking IPv4/IPv6 loopback, private RFC1918, link-local (AWS metadata `169.254.169.254`), and internal hostname aliases.
+- [x] **Phase 5 Complete**: Comprehensive unit/integration test suite, chaos failure-injection testing (outages, stampedes, collision bursts with race detector verification), and CPU/memory allocation benchmarks.
 
 ---
 
