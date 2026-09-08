@@ -1,0 +1,7 @@
+.git
+.github
+.env
+.env.*
+*.log
+tmp
+coverage.out
