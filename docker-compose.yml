@@ -1,9 +1,7 @@
 services:
   api:
-    build: .
+    image: url-shortener-api:latest
     container_name: url-shortener-api
-    ports:
-      - "8080:8080"
 
     environment:
       PORT: "8080"
@@ -35,6 +33,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  frontend:
+    image: url-shortener-frontend:latest
+    container_name: url-shortener-frontend
+
+    environment:
+      BACKEND_URL: "http://api:8080"
+
+    depends_on:
+      api:
+        condition: service_started
 
   postgres:
     image: postgres:18-alpine
@@ -74,5 +83,24 @@ services:
       timeout: 3s
       retries: 5
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: url-shortener-caddy
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+    depends_on:
+      frontend:
+        condition: service_started
+
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
