@@ -1,3 +1,16 @@
-:80 {
-    reverse_proxy api:8080
+urlshort.online {
+    @short path_regexp short ^/[A-Za-z0-9]{7}$
+
+    handle @short {
+        reverse_proxy api:8080
+    }
+
+    @backend path /api/v1/*
+    handle @backend {
+        reverse_proxy api:8080
+    }
+
+    handle {
+        reverse_proxy frontend:3000
+    }
 }
