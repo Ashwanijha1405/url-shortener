@@ -23,6 +23,14 @@ func (m *mockURLService) CreateShortURL(ctx context.Context, originalURL string)
 	return "", nil
 }
 
+func (m *mockURLService) CreateShortURLWithMetadata(ctx context.Context, originalURL string) (service.CreateResult, error) {
+	code, err := m.CreateShortURL(ctx, originalURL)
+	return service.CreateResult{
+		ShortCode: code,
+		Cache:     "miss",
+	}, err
+}
+
 func (m *mockURLService) ResolveURL(ctx context.Context, shortCode string) (string, error) {
 	if m.resolveURLFunc != nil {
 		return m.resolveURLFunc(ctx, shortCode)

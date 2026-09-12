@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* =======================================================================
+   Theme System
+   Two themes via data-theme attribute: "dark" (default) and "light".
+   All component colors reference these CSS variables for instant switching.
+   ======================================================================= */
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Map theme variables into Tailwind */
+  --color-bg: var(--color-bg);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-accent: var(--color-accent);
+  --color-accent-muted: var(--color-accent-muted);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-node-bg: var(--color-node-bg);
+  --color-node-border: var(--color-node-border);
+  --color-node-active: var(--color-node-active);
+  --color-packet-bg: var(--color-packet-bg);
+  --color-packet-text: var(--color-packet-text);
+  --color-connection: var(--color-connection);
+  --color-connection-active: var(--color-connection-active);
+  --color-canvas-bg: var(--color-canvas-bg);
+}
+
+/* ── Dark Theme (default) ─────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --color-bg: #0b0d0f;
+  --color-bg-elevated: #12151a;
+  --color-text: #c8ccd0;
+  --color-text-secondary: #8b919a;
+  --color-text-tertiary: #52585f;
+  --color-border: #262b33;
+  --color-border-subtle: #1c2028;
+  --color-accent: #22d3ee;
+  --color-accent-muted: #155e75;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-node-bg: #161a21;
+  --color-node-border: #2a3040;
+  --color-node-active: #22d3ee;
+  --color-packet-bg: #22d3ee;
+  --color-packet-text: #0b0d0f;
+  --color-connection: #2a3040;
+  --color-connection-active: #22d3ee;
+  --color-canvas-bg: #0e1015;
+}
+
+/* ── Light Theme ──────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg: #f5f0e8;
+  --color-bg-elevated: #ede8de;
+  --color-text: #2d2a26;
+  --color-text-secondary: #5c5650;
+  --color-text-tertiary: #9a938b;
+  --color-border: #d6cfc4;
+  --color-border-subtle: #e3ddd4;
+  --color-accent: #3a8a7a;
+  --color-accent-muted: #bcd5cf;
+  --color-success: #2d8a63;
+  --color-warning: #b38418;
+  --color-error: #c74040;
+  --color-node-bg: #ebe5db;
+  --color-node-border: #d0c9be;
+  --color-node-active: #3a8a7a;
+  --color-packet-bg: #3a8a7a;
+  --color-packet-text: #f5f0e8;
+  --color-connection: #d0c9be;
+  --color-connection-active: #3a8a7a;
+  --color-canvas-bg: #eee9e0;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────── */
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Smooth selection highlight */
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-text);
+}
