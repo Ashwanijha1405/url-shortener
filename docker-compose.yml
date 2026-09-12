@@ -2,6 +2,7 @@ services:
   api:
     image: url-shortener-api:latest
     container_name: url-shortener-api
+    restart: unless-stopped
 
     environment:
       PORT: "8080"
@@ -37,6 +38,7 @@ services:
   frontend:
     image: url-shortener-frontend:latest
     container_name: url-shortener-frontend
+    restart: unless-stopped
 
     environment:
       BACKEND_URL: "http://api:8080"
@@ -48,6 +50,7 @@ services:
   postgres:
     image: postgres:18-alpine
     container_name: url-shortener-postgres
+    restart: unless-stopped
 
     environment:
       POSTGRES_USER: postgres
@@ -71,6 +74,7 @@ services:
   redis:
     image: redis:8-alpine
     container_name: url-shortener-redis
+    restart: unless-stopped
 
     healthcheck:
       test:
@@ -86,6 +90,7 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: url-shortener-caddy
+    restart: unless-stopped
 
     ports:
       - "80:80"
