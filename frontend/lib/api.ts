@@ -33,7 +33,11 @@ export class ApiError extends Error {
 
 /** Base URL for constructing clickable short URLs */
 export function getShortUrlBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL || "http://16.171.135.9";
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
+  return "https://urlshort.online";
 }
 
 /** Format a short code into a full redirect URL */
