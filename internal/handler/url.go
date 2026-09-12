@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Ashwanijha1405/url-shortener/internal/middleware"
 	"github.com/Ashwanijha1405/url-shortener/internal/service"
 )
 
@@ -42,6 +43,8 @@ type CreateURLRequest struct {
 
 type CreateURLResponse struct {
 	ShortCode string `json:"short_code"`
+	Cache     string `json:"cache,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
 func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +56,7 @@ func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortCode, err := h.svc.CreateShortURL(r.Context(), req.URL)
+	result, err := h.svc.CreateShortURLWithMetadata(r.Context(), req.URL)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidInput) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -68,7 +71,9 @@ func (h *Handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := CreateURLResponse{
-		ShortCode: shortCode,
+		ShortCode: result.ShortCode,
+		Cache:     result.Cache,
+		RequestID: middleware.GetRequestID(r.Context()),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

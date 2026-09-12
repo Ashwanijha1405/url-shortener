@@ -26,8 +26,14 @@ var (
 	ErrGenerationFailed = errors.New("failed to generate short code")
 )
 
+type CreateResult struct {
+	ShortCode string
+	Cache     string
+}
+
 type URLService interface {
 	CreateShortURL(ctx context.Context, originalURL string) (string, error)
+	CreateShortURLWithMetadata(ctx context.Context, originalURL string) (CreateResult, error)
 	ResolveURL(ctx context.Context, shortCode string) (string, error)
 }
 
@@ -86,37 +92,66 @@ func (s *Service) cacheKey(shortCode string) string {
 	return "url:" + shortCode
 }
 
-func (s *Service) CreateShortURL(ctx context.Context, originalURL string) (string, error) {
+func (s *Service) reverseCacheKey(originalURL string) string {
+	return "orig:" + originalURL
+}
+
+func (s *Service) CreateShortURLWithMetadata(ctx context.Context, originalURL string) (CreateResult, error) {
 	if err := validator.ValidateURL(originalURL); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrInvalidInput, err)
+		return CreateResult{}, fmt.Errorf("%w: %v", ErrInvalidInput, err)
 	}
 
+	// 1. Check cache first for existing shortened URL (deduplication fast path)
+	revKey := s.reverseCacheKey(originalURL)
+	if cachedCode, err := s.cache.Get(ctx, revKey); err == nil && cachedCode != "" {
+		return CreateResult{
+			ShortCode: cachedCode,
+			Cache:     "hit",
+		}, nil
+	}
+
+	// 2. Cache MISS: generate short code and persist to database
 	for attempt := 0; attempt < s.maxRetries; attempt++ {
 		shortCode, err := generator.Generate(s.codeLength)
 		if err != nil {
-			return "", fmt.Errorf("%w: %v", ErrGenerationFailed, err)
+			return CreateResult{}, fmt.Errorf("%w: %v", ErrGenerationFailed, err)
 		}
 
 		err = s.repo.Create(ctx, shortCode, originalURL)
 		if err == nil {
-			// Pre-warm cache (fail-open: ignore or log error)
+			// Cache reverse mapping for deduplication / hit path
+			if cacheErr := s.cache.Set(ctx, revKey, shortCode, s.cacheTTL); cacheErr != nil {
+				slog.WarnContext(ctx, "failed to cache reverse mapping on creation",
+					slog.String("short_code", shortCode),
+					slog.String("error", cacheErr.Error()),
+				)
+			}
+			// Pre-warm cache for redirect lookups (fail-open: ignore or log error)
 			if cacheErr := s.cache.Set(ctx, s.cacheKey(shortCode), originalURL, s.cacheTTL); cacheErr != nil {
 				slog.WarnContext(ctx, "failed to pre-warm cache on creation",
 					slog.String("short_code", shortCode),
 					slog.String("error", cacheErr.Error()),
 				)
 			}
-			return shortCode, nil
+			return CreateResult{
+				ShortCode: shortCode,
+				Cache:     "miss",
+			}, nil
 		}
 
 		if errors.Is(err, repository.ErrConflict) {
 			continue
 		}
 
-		return "", fmt.Errorf("create short url in repo: %w", err)
+		return CreateResult{}, fmt.Errorf("create short url in repo: %w", err)
 	}
 
-	return "", ErrConflict
+	return CreateResult{}, ErrConflict
+}
+
+func (s *Service) CreateShortURL(ctx context.Context, originalURL string) (string, error) {
+	res, err := s.CreateShortURLWithMetadata(ctx, originalURL)
+	return res.ShortCode, err
 }
 
 func (s *Service) ResolveURL(ctx context.Context, shortCode string) (string, error) {

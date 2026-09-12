@@ -355,3 +355,58 @@ func TestResolveURLRepositoryError(t *testing.T) {
 		t.Fatalf("expected repoErr in chain, got %v", err)
 	}
 }
+
+func TestCreateShortURLWithMetadataCacheHitAndMiss(t *testing.T) {
+	stored := make(map[string]string)
+	repoCallCount := 0
+
+	repo := &mockRepository{
+		createFunc: func(ctx context.Context, shortCode string, originalURL string) error {
+			repoCallCount++
+			return nil
+		},
+	}
+
+	c := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			if val, ok := stored[key]; ok {
+				return val, nil
+			}
+			return "", cache.ErrCacheMiss
+		},
+		setFunc: func(ctx context.Context, key string, value string, ttl time.Duration) error {
+			stored[key] = value
+			return nil
+		},
+	}
+
+	svc := New(repo, WithCache(c, time.Hour))
+
+	// First call: should be cache MISS (persisted in DB + cache pre-warmed)
+	res1, err := svc.CreateShortURLWithMetadata(context.Background(), "https://golang.org")
+	if err != nil {
+		t.Fatalf("first call failed: %v", err)
+	}
+	if res1.Cache != "miss" {
+		t.Fatalf("expected cache miss, got %s", res1.Cache)
+	}
+	if repoCallCount != 1 {
+		t.Fatalf("expected 1 repo call, got %d", repoCallCount)
+	}
+
+	// Second call with same URL: should be cache HIT (returned directly from Redis without DB call)
+	res2, err := svc.CreateShortURLWithMetadata(context.Background(), "https://golang.org")
+	if err != nil {
+		t.Fatalf("second call failed: %v", err)
+	}
+	if res2.Cache != "hit" {
+		t.Fatalf("expected cache hit, got %s", res2.Cache)
+	}
+	if res2.ShortCode != res1.ShortCode {
+		t.Fatalf("expected same shortCode %s, got %s", res1.ShortCode, res2.ShortCode)
+	}
+	if repoCallCount != 1 {
+		t.Fatalf("expected repoCallCount to remain 1 on cache hit, got %d", repoCallCount)
+	}
+}
+
