@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://16.171.135.9";
+const BACKEND_URL = process.env.BACKEND_URL || "http://api:8080";
 
 export async function GET() {
   const startTime = Date.now();
